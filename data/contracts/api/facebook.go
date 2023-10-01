@@ -1,7 +1,7 @@
 package api
 
 type LoadFacebookUserApi interface {
-	LoadUser(Params) Result
+	Load(Params) (Result, error)
 }
 
 type Params struct {
@@ -9,5 +9,11 @@ type Params struct {
 }
 
 type Result struct {
-	User *string
+	User FacebookUser
+}
+
+type FacebookUser struct {
+	FacebookID string
+	Email      string
+	Name       string
 }
