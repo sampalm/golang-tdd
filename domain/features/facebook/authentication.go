@@ -6,7 +6,7 @@ import (
 )
 
 type FacebookAuthenticaton interface {
-	perform(params Params) Result
+	Perform(params Params) Result
 }
 
 // Params is implemented on top of Command Pattern
