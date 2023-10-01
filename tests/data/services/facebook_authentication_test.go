@@ -12,6 +12,7 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
+// MockProxy provides all contracts required to decouple all dependencies from loadFacebookUserApiSpy
 type MockProxy interface {
 	// api interface
 	api.LoadFacebookUserApi
@@ -25,6 +26,7 @@ type MockProxy interface {
 	AssertExpectations(mock.TestingT) bool
 }
 
+// SutTypes provides all the interfaces required to test facebook authentication feature.
 type SutTypes struct {
 	service                services.FacebookAuthenticatonService
 	loadFacebookUserApiSpy MockProxy
@@ -38,22 +40,10 @@ func makeSut() SutTypes {
 	}
 }
 
-type LoadFacebookUserApiSpyMock struct {
-	token      string
-	result     api.Result
-	callsCount atomic.Int64
-}
-
+// LoadFacebookUserApiSpy is a mock implementation to test api.LoadFacebookUserApi
 type LoadFacebookUserApiSpy struct {
 	mock LoadFacebookUserApiSpyMock
 	mock.Mock
-}
-
-func (lfs *LoadFacebookUserApiSpy) Set(params LoadFacebookUserApiSpyMock) {
-	lfs.mock.token = params.token
-}
-func (lfs *LoadFacebookUserApiSpy) Retrive() LoadFacebookUserApiSpyMock {
-	return lfs.mock
 }
 
 func (lfs *LoadFacebookUserApiSpy) LoadUser(params api.Params) api.Result {
@@ -63,17 +53,37 @@ func (lfs *LoadFacebookUserApiSpy) LoadUser(params api.Params) api.Result {
 	return lfs.mock.result
 }
 
+// LoadFacebookUserApiSpyMock allows to inject and retrive mocked data from LoadFacebookUserApiSpy implementation.
+type LoadFacebookUserApiSpyMock struct {
+	token      string
+	result     api.Result
+	callsCount atomic.Int64
+}
+
+func (lfs *LoadFacebookUserApiSpy) Set(params LoadFacebookUserApiSpyMock) {
+	lfs.mock.token = params.token
+}
+func (lfs *LoadFacebookUserApiSpy) Retrive() LoadFacebookUserApiSpyMock {
+	return lfs.mock
+}
+
+//
+// FACEBOOK AUTHENTICATION SERVICE
+// UNIT TESTS
+//
+
 func TestFacebookAuthenticatonService(t *testing.T) {
+	const token = "any_token"
 
 	t.Run("should call LoadFacebookUserApi with correct params", func(t *testing.T) {
 		assert.New(t)
 		expectResult := api.Result{User: nil}
 		sut := makeSut()
 
-		sut.loadFacebookUserApiSpy.On("LoadUser", api.Params{Token: "any_token"}).Return(expectResult)
+		sut.loadFacebookUserApiSpy.On("LoadUser", api.Params{Token: token}).Return(expectResult)
 
-		sut.service.Perform(facebook.Params{Token: "any_token"})
-		assert.Equal(t, "any_token", sut.loadFacebookUserApiSpy.Retrive().token)
+		sut.service.Perform(facebook.Params{Token: token})
+		assert.Equal(t, token, sut.loadFacebookUserApiSpy.Retrive().token)
 		calls := sut.loadFacebookUserApiSpy.Retrive().callsCount
 		assert.Equal(t, int64(1), calls.Load())
 
@@ -86,9 +96,9 @@ func TestFacebookAuthenticatonService(t *testing.T) {
 		sut := makeSut()
 		sut.loadFacebookUserApiSpy.Set(LoadFacebookUserApiSpyMock{result: expectResult})
 
-		sut.loadFacebookUserApiSpy.On("LoadUser", api.Params{Token: "any_token"}).Return(expectResult)
+		sut.loadFacebookUserApiSpy.On("LoadUser", api.Params{Token: token}).Return(expectResult)
 
-		result := sut.service.Perform(facebook.Params{Token: "any_token"})
+		result := sut.service.Perform(facebook.Params{Token: token})
 		assert.ErrorIs(t, domainErrs.AuthenticationError{}, *result.Err)
 
 		sut.loadFacebookUserApiSpy.AssertExpectations(t)
