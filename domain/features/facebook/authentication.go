@@ -17,5 +17,5 @@ type Params struct {
 // Result is implemented on top of Command Pattern
 type Result struct {
 	AccessToken models.AccessToken
-	Err         errors.AuthenticationError
+	Err         *errors.AuthenticationError
 }

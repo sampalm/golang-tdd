@@ -1,47 +1,46 @@
 package services_test
 
 import (
+	"sync/atomic"
+	"tdd/data/contracts/api"
+	"tdd/data/services"
+	domainErrs "tdd/domain/errors"
 	"tdd/domain/features/facebook"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
 
-type FacebookAuthenticatonService struct {
-	loadFacebookUser LoadFacebookUserApi
-}
-
-func NewFacebookAuthenticatonService(lf LoadFacebookUserApi) FacebookAuthenticatonService {
-	return FacebookAuthenticatonService{
-		loadFacebookUser: lf,
-	}
-}
-
-func (fs FacebookAuthenticatonService) Perform(params facebook.Params) facebook.Result {
-	fs.loadFacebookUser.LoadUser(Params(params))
-	return facebook.Result{}
-}
-
-type LoadFacebookUserApi interface {
-	LoadUser(Params)
-}
-
-type Params struct {
-	Token string
-}
-
 type LoadFacebookUserApiSpy struct {
-	token string
+	token      string
+	callsCount atomic.Int64
+	result     api.Result
 }
 
-func (lfs *LoadFacebookUserApiSpy) LoadUser(params Params) {
+func (lfs *LoadFacebookUserApiSpy) LoadUser(params api.Params) api.Result {
 	lfs.token = params.Token
+	lfs.callsCount.Add(1)
+	return lfs.result
 }
 
 func TestFacebookAuthenticatonService(t *testing.T) {
-	var loadFacebookUserApi = &LoadFacebookUserApiSpy{}
-	var sut = NewFacebookAuthenticatonService(loadFacebookUserApi)
 
-	sut.Perform(facebook.Params{Token: "any_token"})
-	assert.Equal(t, "any_token", loadFacebookUserApi.token)
+	t.Run("should call LoadFacebookUserApi with correct params", func(t *testing.T) {
+		var loadFacebookUserApi = &LoadFacebookUserApiSpy{}
+		var sut = services.NewFacebookAuthenticatonService(loadFacebookUserApi)
+
+		sut.Perform(facebook.Params{Token: "any_token"})
+		assert.Equal(t, "any_token", loadFacebookUserApi.token)
+		assert.Equal(t, int64(1), loadFacebookUserApi.callsCount.Load())
+	})
+
+	t.Run("should return AuthenticationError when LoadFacebookUserApi returns nil", func(t *testing.T) {
+		var loadFacebookUserApi = &LoadFacebookUserApiSpy{}
+		loadFacebookUserApi.result = api.Result{User: nil}
+		var sut = services.NewFacebookAuthenticatonService(loadFacebookUserApi)
+
+		result := sut.Perform(facebook.Params{Token: "any_token"})
+		assert.ErrorIs(t, domainErrs.AuthenticationError{}, *result.Err)
+	})
+
 }
