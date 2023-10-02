@@ -8,17 +8,20 @@ import (
 	"tdd/domain/features/facebook"
 )
 
+type userAccountRepo struct {
+	repos.LoadUserAccountRepository
+	repos.CreateFacebookAccountRepository
+}
+
 type FacebookAuthenticatonService struct {
-	loadFacebookUser          api.LoadFacebookUserApi
-	loadUserAccountRepo       repos.LoadUserAccountRepository
-	createFacebookAccountRepo repos.CreateFacebookAccountRepository
+	loadFacebookUser api.LoadFacebookUserApi
+	userAccountRepo  userAccountRepo
 }
 
 func NewFacebookAuthenticatonService(lf api.LoadFacebookUserApi, lu repos.LoadUserAccountRepository, fb repos.CreateFacebookAccountRepository) FacebookAuthenticatonService {
 	return FacebookAuthenticatonService{
-		loadFacebookUser:          lf,
-		loadUserAccountRepo:       lu,
-		createFacebookAccountRepo: fb,
+		loadFacebookUser: lf,
+		userAccountRepo:  userAccountRepo{lu, fb},
 	}
 }
 
@@ -28,7 +31,7 @@ func (fs FacebookAuthenticatonService) Perform(params facebook.Params) (facebook
 		return facebook.Result{}, domainErrs.AuthenticationError{Err: err}
 	}
 
-	_, err = fs.loadUserAccountRepo.Load(repos.LoadUserAccountParams{Email: res.User.Email})
+	_, err = fs.userAccountRepo.Load(repos.LoadUserAccountParams{Email: res.User.Email})
 	if err != nil {
 		if errors.Is(err, domainErrs.ErrNoData) {
 			userFb := repos.CreateFacebookAccountParams{
@@ -36,7 +39,7 @@ func (fs FacebookAuthenticatonService) Perform(params facebook.Params) (facebook
 				Name:       res.User.Name,
 				FacebookID: res.User.FacebookID,
 			}
-			fs.createFacebookAccountRepo.CreateFromFacebook(userFb)
+			fs.userAccountRepo.CreateFromFacebook(userFb)
 		}
 	}
 	return facebook.Result{}, domainErrs.AuthenticationError{}
