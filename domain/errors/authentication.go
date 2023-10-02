@@ -1,6 +1,15 @@
 package errors
 
-import "fmt"
+import (
+	"errors"
+	"fmt"
+)
+
+var (
+	ErrNoData           = errors.New("no data")
+	ErrInvalidParams    = errors.New("invalid params")
+	ErrNotAuthenticated = errors.New("not authenticated")
+)
 
 type AuthenticationError struct {
 	Err error

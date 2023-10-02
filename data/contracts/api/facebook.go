@@ -9,7 +9,7 @@ type Params struct {
 }
 
 type Result struct {
-	User FacebookUser
+	User *FacebookUser
 }
 
 type FacebookUser struct {
